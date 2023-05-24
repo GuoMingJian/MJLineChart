@@ -75,8 +75,8 @@
 		D3F59A302A1DAB610093F65E /* MJLineChart */ = {
 			isa = PBXGroup;
 			children = (
-				D3F59A312A1DAB610093F65E /* longPressBG.png */,
 				D3F59A322A1DAB610093F65E /* MJLineChartView.swift */,
+				D3F59A312A1DAB610093F65E /* longPressBG.png */,
 			);
 			path = MJLineChart;
 			sourceTree = "<group>";

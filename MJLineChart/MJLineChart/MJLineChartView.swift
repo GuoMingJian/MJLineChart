@@ -3,6 +3,8 @@
 //  MJLineChart
 //
 //  欢迎大家用我的折线图项目，建议与意见欢迎交流：微信（15899670225），QQ（1339601489）
+//  简书：https://www.jianshu.com/p/3d6321dbeb8b
+//  GitHub：https://github.com/GuoMingJian/MJLineChart
 //
 //  Created by 郭明健 on 2023/5/20.
 //
@@ -80,7 +82,7 @@ struct MJLineChartConfiguration {
     /// 超过最小值前缀（eg: Below 18°F）
     public var minAlarmPrefix: String = "Below"
     /// 是否显示 Y轴 ”报警线“
-    public var isShowYAxisAlarmLine: Bool = false
+    public var isShowYAxisAlarmLine: Bool = true
     /// Y轴 ”报警线“ 最大数值
     public var yAxisAlarmLineMaxValue: Double = 80
     /// Y轴 ”报警线“ 最小数值
@@ -103,7 +105,7 @@ struct MJLineChartConfiguration {
     /// X轴 单位颜色
     public var xUnitColor: UIColor = .gray
     /// X轴 刻度间距
-    public var xSegmentSpace: CGFloat = 35
+    public var xSegmentSpace: CGFloat = 38
     /// X轴 最末尾刻度留白长度(如果要显示X轴单位则适当增加该值)
     public var xLastSegmentSpace: CGFloat = 50
     /// X轴 刻度朝向（默认朝下）
@@ -1072,19 +1074,19 @@ class LongPressView: UIView {
         } else {
             yValueLabel.textColor = alarmLabel.textColor
         }
-        var size = text.boundingRect(with: CGSize(width: bgImageView.frame.size.width, height: bgImageView.frame.size.height), font: textFont)
+        var size = text.boundingRect(with: bgImageView.frame.size, font: textFont)
         var rect: CGRect = CGRect(x: x, y: y, width: size.width, height: size.height)
         xValueLabel.frame = rect
         //
         text = yValueLabel.text ?? ""
         y = CGRectGetMaxY(rect) + 5
-        size = text.boundingRect(with: CGSize(width: bgImageView.frame.size.width, height: bgImageView.frame.size.height), font: textFont)
+        size = text.boundingRect(with: bgImageView.frame.size, font: textFont)
         rect = CGRect(x: x, y: y, width: size.width, height: size.height)
         yValueLabel.frame = rect
         //
         text = alarmLabel.text ?? ""
         y = CGRectGetMaxY(rect) + 5
-        size = text.boundingRect(with: CGSize(width: bgImageView.frame.size.width, height: bgImageView.frame.size.height), font: textFont)
+        size = text.boundingRect(with: bgImageView.frame.size, font: textFont)
         rect = CGRect(x: x, y: y, width: size.width, height: size.height)
         alarmLabel.frame = rect
     }
