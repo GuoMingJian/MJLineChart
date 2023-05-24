@@ -260,7 +260,9 @@ class XAxisView: UIView {
     
     public var isLongPress: Bool = false {
         didSet {
-            configuration.isShowPointText = !isLongPress
+            if self.isShowPointText {
+                configuration.isShowPointText = !isLongPress
+            }
             self.setNeedsDisplay()
         }
     }
@@ -305,6 +307,7 @@ class XAxisView: UIView {
     // 长按相关标记 属性
     private var currentLongPressX: CGFloat?
     private var lastPointIndex: Int = -1
+    private var isShowPointText: Bool = true
     
     // MARK: -
     public func setupXAxis(frame: CGRect,
@@ -313,6 +316,7 @@ class XAxisView: UIView {
         self.chartWidth = frame.size.width
         self.chartHeight = frame.size.height
         self.configuration = configuration
+        self.isShowPointText = configuration.isShowPointText
         
         totalLines.removeAll()
     }
