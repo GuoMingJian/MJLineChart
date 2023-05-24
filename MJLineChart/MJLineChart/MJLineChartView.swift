@@ -410,7 +410,7 @@ class XAxisView: UIView {
         }
     }
     
-    /// 刻度对应的文本以及单位
+    /// 刻度对应的文本
     private func drawXAxisText() {
         for index in 0..<configuration.xSegmentCount + 1 {
             // X轴文本
