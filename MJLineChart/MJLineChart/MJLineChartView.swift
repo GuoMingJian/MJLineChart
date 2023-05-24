@@ -813,25 +813,25 @@ class XAxisView: UIView {
     
     /// 祛除多余的零
     private func removeZero(value: Double) -> String {
-        let numberString = String(format: "%f", value)
+        let result = String(format: "%f", value)
         
-        if numberString.contains(".") {
-            var outNumber = numberString
+        if result.contains(".") {
+            var newResult = result
             var i = 1
-            while i < numberString.count {
-                if outNumber.hasSuffix("0") {
-                    outNumber.remove(at: outNumber.index(before: outNumber.endIndex))
+            while i < result.count {
+                if newResult.hasSuffix("0") {
+                    newResult.remove(at: newResult.index(before: newResult.endIndex))
                     i = i + 1
                 } else {
                     break
                 }
             }
-            if outNumber.hasSuffix(".") {
-                outNumber.remove(at: outNumber.index(before: outNumber.endIndex))
+            if newResult.hasSuffix(".") {
+                newResult.remove(at: newResult.index(before: newResult.endIndex))
             }
-            return outNumber
+            return newResult
         } else {
-            return numberString
+            return result
         }
     }
 }
