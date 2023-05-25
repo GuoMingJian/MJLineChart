@@ -180,6 +180,17 @@ class MJLineChartView: UIView {
     /// 开始画线
     public func addLine(values: [MJLineChartLineSource]) {
         self.xAxisView.addLine(values: values)
+        
+        let screenWidth = UIScreen.main.bounds.size.width
+        let point = values.first
+        if let data: Double = point?.xAxisValue {
+            let xValue = self.xAxisView.getXAxisValue(data: data)
+            if xValue + configuration.yAxisViewWidth > screenWidth {
+                var rect = self.scrollView.bounds
+                rect.origin.x = xValue
+                self.scrollView.scrollRectToVisible(rect, animated: false)
+            }
+        }
     }
     
     // MARK: - Actions
@@ -743,7 +754,7 @@ class XAxisView: UIView {
     }
     
     /// 根据数值返回对应Y轴坐标
-    private func getYAxisValue(data: Double) -> CGFloat {
+    public func getYAxisValue(data: Double) -> CGFloat {
         let topMargin = topMargin
         let ySegmentHeight: CGFloat = (yAxisHeight - configuration.ySegmentTopSpace) / CGFloat(configuration.ySegmentCount)
         let yValue: Double = yAxisHeight - (data - configuration.yMin) / ySegmentValue * ySegmentHeight
@@ -752,7 +763,7 @@ class XAxisView: UIView {
     }
     
     /// 根据数值返回对应X轴坐标
-    private func getXAxisValue(data: Double) -> CGFloat {
+    public func getXAxisValue(data: Double) -> CGFloat {
         let xMin = configuration.xMin - xSegmentValue
         let x: Double = abs(data - xMin) / (configuration.xMax - configuration.xMin) * (chartWidth - configuration.xSegmentSpace - configuration.xLastSegmentSpace)
         return x
@@ -1073,8 +1084,9 @@ class LongPressView: UIView {
         var text = xValueLabel.text ?? ""
         let x: CGFloat = 15
         var y: CGFloat = 3
-        if alarmLabel.text == nil {
+        if alarmLabel.text == nil || alarmLabel.text?.count == 0 {
             y = 15
+            yValueLabel.textColor = xValueLabel.textColor
         } else {
             yValueLabel.textColor = alarmLabel.textColor
         }
