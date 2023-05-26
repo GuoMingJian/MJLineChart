@@ -271,16 +271,13 @@ class MJLineChartView: UIView {
             let max: CGFloat = yAxisView.configuration.xSegmentSpace * 2
             if newSpace < min {
                 newSpace = min
-                print("最小\(min)")
             }
             if newSpace > max {
                 newSpace = max
-                print("最大\(max)")
             }
             
-            configuration.xSegmentSpace = newSpace
-            
             if let pointArray = xAxisView.totalLines.first {
+                configuration.xSegmentSpace = newSpace
                 setupXAxisView()
                 
                 xAxisView.currentLongPressX = nil
