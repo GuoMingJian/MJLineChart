@@ -195,6 +195,7 @@ class MJLineChartView: UIView {
         scrollByPointIndex(0)
     }
     
+    /// 外部指定点，自动滑动到该点
     private func scrollByPointIndex(_ pointIndex: Int,
                                     isLongPress: Bool = false) {
         if let line = xAxisView.totalLines.first {
@@ -654,6 +655,12 @@ class XAxisView: UIView {
             currentLongPressX = nil
             lastPointIndex = -1
         }
+        
+        //        if !isLongPress, currentLongPressX != nil {
+        //            drawLongPressNearestLine(x: currentLongPressX!, color: configuration.longPressColor)
+        //            drawLongPressText(index: lastPointIndex)
+        //            drawLongPressPoint(index: lastPointIndex)
+        //        }
     }
     
     /// 根据x画长按线
