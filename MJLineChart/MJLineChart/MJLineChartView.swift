@@ -122,6 +122,10 @@ struct MJLineChartLineSource {
     public var xAxisValue: Double = 0
     /// 锚点在Y轴按比例换算后的值
     public var yAxisValue: Double = 0
+    
+    //
+    public var isAlarm: Bool = false
+    public var alarmString: String = ""
 }
 
 class MJLineChartView: UIView {
@@ -160,12 +164,19 @@ class MJLineChartView: UIView {
     /// 长按移动距离
     private var moveDistance: CGFloat = 0
     
+    /// 外部传入当前索引的index
+    public var pointIndex: Int = 0 {
+        didSet {
+            scrollByPointIndex(pointIndex, isLongPress: true)
+        }
+    }
+    
     // MARK: - Public
     public func setupLineChartView(frame: CGRect,
                                    configuration: MJLineChartConfiguration) {
         self.frame = frame
-        self.chartWidth = frame.size.width
-        self.chartHeight = frame.size.height
+        chartWidth = frame.size.width
+        chartHeight = frame.size.height
         self.configuration = configuration
         //
         setupXAxisView()
@@ -174,21 +185,40 @@ class MJLineChartView: UIView {
         // 长按手势
         let longPress: UILongPressGestureRecognizer = UILongPressGestureRecognizer(target: self, action: #selector(longPressAction(_:)))
         longPress.minimumPressDuration = 0.3
-        self.xAxisView.addGestureRecognizer(longPress)
+        xAxisView.addGestureRecognizer(longPress)
     }
     
     /// 开始画线
     public func addLine(values: [MJLineChartLineSource]) {
-        self.xAxisView.addLine(values: values)
+        xAxisView.addLine(values: values)
         
-        let screenWidth = UIScreen.main.bounds.size.width
-        let point = values.first
-        if let data: Double = point?.xAxisValue {
-            let xValue = self.xAxisView.getXAxisValue(data: data)
-            if xValue + configuration.yAxisViewWidth > screenWidth {
-                var rect = self.scrollView.bounds
-                rect.origin.x = xValue
-                self.scrollView.scrollRectToVisible(rect, animated: false)
+        scrollByPointIndex(0)
+    }
+    
+    private func scrollByPointIndex(_ pointIndex: Int,
+                                    isLongPress: Bool = false) {
+        if let line = xAxisView.totalLines.first {
+            if pointIndex < line.count {
+                let point: MJLineChartLineSource = line[pointIndex]
+                let data: Double = point.xAxisValue
+                let xValue = xAxisView.getXAxisValue(data: data)
+                let screenWidth = UIScreen.main.bounds.size.width
+                if xValue + configuration.yAxisViewWidth > screenWidth {
+                    var rect = scrollView.bounds
+                    rect.origin.x = xValue - configuration.xSegmentSpace
+                    scrollView.scrollRectToVisible(rect, animated: false)
+                }
+            }
+        }
+        if isLongPress {
+            xAxisView.isLongPress = false
+            
+            xAxisView.lastPointIndex = pointIndex
+            if let line = xAxisView.totalLinesPoint.first {
+                if pointIndex < line.count {
+                    let point = line[pointIndex]
+                    xAxisView.currentLongPressX = point.x
+                }
             }
         }
     }
@@ -196,6 +226,10 @@ class MJLineChartView: UIView {
     // MARK: - Actions
     /// 长按
     @objc private func longPressAction(_ longPress: UILongPressGestureRecognizer) {
+        if xAxisView.totalLines.count == 0 || xAxisView.totalLinesPoint.count == 0 {
+            return
+        }
+        
         if longPress.state == .changed || longPress.state == .began {
             let location = longPress.location(in: xAxisView)
             
@@ -224,33 +258,33 @@ class MJLineChartView: UIView {
     /// 创建 X轴
     private func setupXAxisView() {
         scrollView.frame = CGRect(x: configuration.yAxisViewWidth, y: 0, width: chartWidth - configuration.yAxisViewWidth, height: chartHeight)
-        self.addSubview(scrollView)
+        addSubview(scrollView)
         
         let xAxisRect = CGRect(x: 0, y: 0, width: CGFloat(configuration.xSegmentCount + 1) * configuration.xSegmentSpace + configuration.xLastSegmentSpace, height: chartHeight)
-        self.xAxisView.setupXAxis(frame: xAxisRect, configuration: configuration)
+        xAxisView.setupXAxis(frame: xAxisRect, configuration: configuration)
         
-        self.xAxisView.longPressPointIndexBlock = { pointIndex in
+        xAxisView.longPressPointIndexBlock = { pointIndex in
             if self.longPressPointIndexBlock != nil {
                 self.longPressPointIndexBlock!(pointIndex)
             }
         }
         
-        scrollView.addSubview(self.xAxisView)
-        scrollView.contentSize = self.xAxisView.frame.size
+        scrollView.addSubview(xAxisView)
+        scrollView.contentSize = xAxisView.frame.size
     }
     
     /// 创建 Y轴
     private func setupYAxisView() {
         let yAxisRect = CGRect(x: 0, y: 0, width: configuration.yAxisViewWidth, height: chartHeight)
-        self.yAxisView.setupYAxis(frame: yAxisRect, configuration: configuration)
+        yAxisView.setupYAxis(frame: yAxisRect, configuration: configuration)
         
-        self.addSubview(self.yAxisView)
+        addSubview(yAxisView)
     }
 }
 
 extension MJLineChartView: UIScrollViewDelegate {
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
-        self.xAxisView.didScrollContentOffset = scrollView.contentOffset
+        xAxisView.didScrollContentOffset = scrollView.contentOffset
     }
 }
 
@@ -271,10 +305,10 @@ class XAxisView: UIView {
     
     public var isLongPress: Bool = false {
         didSet {
-            if self.isShowPointText {
+            if isShowPointText {
                 configuration.isShowPointText = !isLongPress
             }
-            self.setNeedsDisplay()
+            setNeedsDisplay()
         }
     }
     public var screenPoint: CGPoint = .zero
@@ -304,8 +338,6 @@ class XAxisView: UIView {
     private var textAttributedString: Dictionary<NSAttributedString.Key, Any> = [:]
     private var unitAttributedString: Dictionary<NSAttributedString.Key, Any> = [:]
     
-    private var totalLines: [[MJLineChartLineSource]] = []
-    private var totalLinesPoint: [[CGPoint]] = []
     /// 绘制多条折线时，第一条为ChartLineColor，其余的由数组颜色取余循环。
     private var linesColorArray: [UIColor] = [
         UIColor(red: 252/255, green: 45/255, blue: 46/255, alpha: 1),
@@ -315,19 +347,23 @@ class XAxisView: UIView {
         UIColor(red: 65/255, green: 161/255, blue: 191/255, alpha: 1),
         UIColor(red: 251/255, green: 45/255, blue: 47/255, alpha: 1),
     ]
-    // 长按相关标记 属性
-    private var currentLongPressX: CGFloat?
-    private var lastPointIndex: Int = -1
     private var isShowPointText: Bool = true
+    
+    // MARK: -
+    public var totalLines: [[MJLineChartLineSource]] = []
+    public var totalLinesPoint: [[CGPoint]] = []
+    // 长按相关标记 属性
+    public var currentLongPressX: CGFloat?
+    public var lastPointIndex: Int = -1
     
     // MARK: -
     public func setupXAxis(frame: CGRect,
                            configuration: MJLineChartConfiguration) {
         self.frame = frame
-        self.chartWidth = frame.size.width
-        self.chartHeight = frame.size.height
+        chartWidth = frame.size.width
+        chartHeight = frame.size.height
         self.configuration = configuration
-        self.isShowPointText = configuration.isShowPointText
+        isShowPointText = configuration.isShowPointText
         
         totalLines.removeAll()
     }
@@ -335,7 +371,7 @@ class XAxisView: UIView {
     /// 开始画线
     public func addLine(values: [MJLineChartLineSource]) {
         totalLines.append(values)
-        self.setNeedsDisplay()
+        setNeedsDisplay()
     }
     
     override func draw(_ rect: CGRect) {
@@ -610,7 +646,7 @@ class XAxisView: UIView {
                 } else {
                     if currentLongPressX != point.x {
                         currentLongPressX = point.x
-                        self.setNeedsDisplay()
+                        setNeedsDisplay()
                     }
                 }
             }
@@ -651,7 +687,8 @@ class XAxisView: UIView {
             // ------- //
             if configuration.isShowLongPressMoveText {
                 //
-                let viewSize = LongPressView.getViewSize()
+                let font = UIFont.systemFont(ofSize: 10)
+                let viewSize = LongPressView.getViewSize(xValue: xValue, yValue: yValue, alarmValue: alarmValue, font: font)
                 let xOffset: CGFloat = 40
                 let yOffset: CGFloat = 20
                 let screenWidth = UIScreen.main.bounds.size.width
@@ -675,6 +712,7 @@ class XAxisView: UIView {
                 }
                 let longPressRect: CGRect = CGRect(x: x, y: y, width: viewSize.width, height: viewSize.height)
                 let longPressView = LongPressView(frame: longPressRect)
+                longPressView.textFont = font
                 longPressView.setupLongPressView(xValue: xValue, yValue: yValue, alarmValue: alarmValue)
                 
                 let image: UIImage = longPressView.screenshotsImage()
@@ -882,8 +920,8 @@ class YAxisView: UIView {
     public func setupYAxis(frame: CGRect,
                            configuration: MJLineChartConfiguration) {
         self.frame = frame
-        self.chartWidth = frame.size.width
-        self.chartHeight = frame.size.height
+        chartWidth = frame.size.width
+        chartHeight = frame.size.height
         self.configuration = configuration
     }
     
@@ -1000,7 +1038,7 @@ class YAxisView: UIView {
 class LongPressView: UIView {
     override init(frame: CGRect) {
         super.init(frame: frame)
-        self.translatesAutoresizingMaskIntoConstraints = false
+        translatesAutoresizingMaskIntoConstraints = false
     }
     
     required init?(coder: NSCoder) {
@@ -1056,8 +1094,37 @@ class LongPressView: UIView {
     }
     
     // MARK: -
-    static func getViewSize() -> CGSize {
-        return CGSize(width: 88, height: 62)
+    static func getViewSize(xValue: String,
+                            yValue: String,
+                            alarmValue: String?,
+                            font: UIFont) -> CGSize {
+        let x: CGFloat = 15
+        var y: CGFloat = 3
+        if alarmValue == nil {
+            y = 15
+        }
+        let width: CGFloat = 88
+        let minHeight: CGFloat = 62
+        let disPlayWidth: CGFloat = width - x * 2
+        let maxHeight: CGFloat = 200
+        
+        var size = xValue.boundingRect(with: CGSize(width: disPlayWidth, height: maxHeight), font: font)
+        var rect: CGRect = CGRect(x: x, y: y, width: size.width, height: size.height)
+        y = CGRectGetMaxY(rect) + 5
+        
+        size = yValue.boundingRect(with: CGSize(width: disPlayWidth, height: maxHeight), font: font)
+        rect = CGRect(x: x, y: y, width: size.width, height: size.height)
+        y = CGRectGetMaxY(rect) + 5
+        
+        if alarmValue != nil {
+            size = alarmValue!.boundingRect(with: CGSize(width: disPlayWidth, height: maxHeight), font: font)
+            rect = CGRect(x: x, y: y, width: size.width, height: size.height)
+            y = CGRectGetMaxY(rect) + 20 + 5
+        }
+        if y < minHeight {
+            y = minHeight
+        }
+        return CGSize(width: width, height: y)
     }
     
     public func setupLongPressView(xValue: String,
@@ -1079,7 +1146,7 @@ class LongPressView: UIView {
         bgImageView.addSubview(yValueLabel)
         bgImageView.addSubview(alarmLabel)
         //
-        bgImageView.frame = self.bounds
+        bgImageView.frame = bounds
         //
         var text = xValueLabel.text ?? ""
         let x: CGFloat = 15
