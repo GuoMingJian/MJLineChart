@@ -186,6 +186,10 @@ class MJLineChartView: UIView {
         let longPress: UILongPressGestureRecognizer = UILongPressGestureRecognizer(target: self, action: #selector(longPressAction(_:)))
         longPress.minimumPressDuration = 0.3
         xAxisView.addGestureRecognizer(longPress)
+        
+        // 捏合手势
+        let pinch: UIPinchGestureRecognizer = UIPinchGestureRecognizer(target: self, action: #selector(pinchAction(_:)))
+        self.xAxisView.addGestureRecognizer(pinch)
     }
     
     /// 开始画线
@@ -252,6 +256,38 @@ class MJLineChartView: UIView {
         if longPress.state == .ended {
             moveDistance = 0
             xAxisView.isLongPress = false
+        }
+    }
+    
+    @objc private func pinchAction(_ recognizer: UIPinchGestureRecognizer) {
+        if xAxisView.totalLines.count == 0 || xAxisView.totalLinesPoint.count == 0 {
+            return
+        }
+        
+        if recognizer.state != .ended {
+            var newSpace = recognizer.scale * configuration.xSegmentSpace
+            
+            let min: CGFloat = 20
+            let max: CGFloat = yAxisView.configuration.xSegmentSpace * 2
+            if newSpace < min {
+                newSpace = min
+                print("最小\(min)")
+            }
+            if newSpace > max {
+                newSpace = max
+                print("最大\(max)")
+            }
+            
+            configuration.xSegmentSpace = newSpace
+            
+            if let pointArray = xAxisView.totalLines.first {
+                setupXAxisView()
+                
+                xAxisView.currentLongPressX = nil
+                xAxisView.totalLines.removeAll()
+                xAxisView.totalLinesPoint.removeAll()
+                addLine(values: pointArray)
+            }
         }
     }
     
@@ -460,15 +496,21 @@ class XAxisView: UIView {
     
     /// 刻度对应的文本
     private func drawXAxisText() {
+        var lastX: CGFloat = 0
         for index in 0..<configuration.xSegmentCount + 1 {
             // X轴文本
             let xCurrentSegmentValue: Double = configuration.xMin + xSegmentValue * Double(index)
             let xSegmentText = String(format: configuration.xAxisTextFormat, xCurrentSegmentValue)
             let textSize = xSegmentText.size(withAttributes: textAttributedString)
             let x: CGFloat = CGFloat(index + 1) * configuration.xSegmentSpace - textSize.width / 2
-            let y: CGFloat = crossingPointY + configuration.xAxisTextOffset
-            let textRect = CGRect(x: x, y: y, width: textSize.width, height: textSize.height)
-            (xSegmentText as NSString).draw(in: textRect, withAttributes: textAttributedString)
+            if x > lastX {
+                let y: CGFloat = crossingPointY + configuration.xAxisTextOffset
+                let textRect = CGRect(x: x, y: y, width: textSize.width, height: textSize.height)
+                (xSegmentText as NSString).draw(in: textRect, withAttributes: textAttributedString)
+                lastX = x + textSize.width
+            } else {
+                // 重叠不绘制
+            }
         }
     }
     
@@ -895,7 +937,7 @@ class XAxisView: UIView {
 // MARK: - YAxisView
 class YAxisView: UIView {
     /// 折线图配置
-    private var configuration: MJLineChartConfiguration!
+    public var configuration: MJLineChartConfiguration!
     /// YAxisView 宽
     private var chartWidth: CGFloat = 0
     /// YAxisView 高
